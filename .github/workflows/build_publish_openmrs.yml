@@ -66,26 +66,23 @@ jobs:
       - name: Helm Package
         run: helm package $HELM_CHART_PATH
 
-      - name: Checkout Charts Repository
-        uses: actions/checkout@v2
-        with:
-          repository: Bahmni/helm-charts
-          ref: gh-pages
-          path: helm-charts
-          persist-credentials: false
-
-      - name: Copy Helm Archive
-        run: cp openmrs-${{ env.ARTIFACT_VERSION }}.tgz helm-charts/openmrs/
-
-      - name: Helm Index
-        working-directory: helm-charts/
-        run: helm repo index --merge index.yaml --url https://bahmni.github.io/helm-charts/  .
-
-      - name: Commit and Push Chart Repository
-        working-directory: helm-charts/
+      # Chart como artefacto OCI, al mismo registro que las imagenes.
+      #
+      # SUSTITUYE al modelo de Bahmni (gh-pages + 'helm repo index'), que sirve el
+      # repositorio de charts como sitio web y por tanto exige que sea PUBLICO:
+      # GitHub Pages no publica repositorios privados. Con OCI la visibilidad se
+      # controla por artefacto y no hacen falta ni gh-pages ni index.yaml.
+      #
+      # El nombre del repositorio OCI lo deriva helm del <name> del Chart.yaml. Por eso
+      # el chart se llama 'openmrs-hm-chart' y no igual que la imagen: ambos usan la
+      # MISMA ARTIFACT_VERSION, asi que compartir repositorio haria que la etiqueta de
+      # uno sobrescribiera la del otro.
+      - name: Publicar el chart como artefacto OCI
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
         run: |
-          git config user.name ${{ secrets.BAHMNI_USERNAME}}
-          git config user.email ${{ secrets.BAHMNI_EMAIL}}
-          git add .
-          git commit -m "Release of openmrs-${{ env.ARTIFACT_VERSION }}"
-          git push 'https://${{ secrets.BAHMNI_USERNAME}}:${{ secrets.BAHMNI_PAT}}@github.com/bahmni/helm-charts.git' gh-pages
+          tgz=$(ls -1 *.tgz | head -1)
+          if [ -z "$tgz" ]; then echo 'no se empaqueto ningun chart'; exit 1; fi
+          echo "$DOCKER_TOKEN" | helm registry login registry-1.docker.io -u "$DOCKER_USER" --password-stdin
+          helm push "$tgz" oci://registry-1.docker.io/healthmeshgroup
