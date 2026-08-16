@@ -54,30 +54,47 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      # Los modulos de Chile viven en GitHub Packages, que sirve por repositorio y
-      # exige credenciales aunque no haya nada publico. Hay un <server> por cada
-      # <repository> del distro/pom.xml, con el mismo <id>.
+      # Los modulos de Chile viven en GitHub Packages, que sirve por repositorio y exige
+      # credenciales aunque no haya nada publico. Hay un <server> por cada <repository>
+      # del distro/pom.xml, con el mismo <id>.
       #
-      # Se usa el GITHUB_TOKEN del propio workflow, que esta acotado a este
-      # repositorio: para que alcance a los paquetes de los otros seis hay que
-      # concederle acceso UNA vez por paquete, en la pagina del paquete ->
-      # "Manage Actions access" -> anadir openmrs-distro-bahmni-chile con Read.
-      # Si algun dia estorba, la alternativa es un PAT con read:packages en un
-      # secreto; se prefiere no tenerlo porque un PAT no caduca con el job.
+      # QUE TOKEN USA Y POR QUE
+      # El GITHUB_TOKEN de un workflow esta acotado a SU repositorio, asi que no ve los
+      # paquetes de los otros seis. Se puede resolver de dos formas:
+      #
+      #   a) Conceder lectura a este repositorio en cada paquete ("Manage Actions access").
+      #      Es por PAQUETE, no por repositorio, y solo bahmni-core publica 11 (bahmnicore-omod,
+      #      bahmnicore-api, bahmni-emr-api, reference-data-api, admin...): son mas de veinte
+      #      en total, y habria que repetirlo con cada modulo nuevo.
+      #
+      #   b) Un token con `read:packages` en el secreto GH_PACKAGES_TOKEN. Uno solo, y cubre
+      #      lo que venga. Conviene que sea de alcance fino: solo lectura de paquetes, solo
+      #      esta organizacion y con caducidad.
+      #
+      # Se prefiere (b) por la cantidad de paquetes, pero (a) sigue funcionando: si el
+      # secreto no esta definido se cae al GITHUB_TOKEN y bastara con los permisos por
+      # paquete que haya concedidos.
       - name: Credenciales de GitHub Packages
         run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "Sin GH_PACKAGES_TOKEN: se usa el GITHUB_TOKEN del workflow."
+            echo "Solo funcionara si cada paquete concede lectura a este repositorio."
+            GH_TOKEN="${GITHUB_TOKEN_FALLBACK}"
+          else
+            echo "Usando GH_PACKAGES_TOKEN."
+          fi
           mkdir -p ~/.m2
           {
             echo '<settings><servers>'
-            for id in ghp-bahmni-core-chile ghp-appointments-chile ghp-oauth2login \
-                      ghp-eis-identity ghp-interconsulta ghp-provider-signature; do
+            for id in ghp-bahmni-core-chile ghp-appointments-chile ghp-oauth2login                       ghp-eis-identity ghp-interconsulta ghp-provider-signature; do
               echo "  <server><id>${id}</id><username>${GH_ACTOR}</username><password>${GH_TOKEN}</password></server>"
             done
             echo '</servers></settings>'
           } > ~/.m2/settings.xml
         env:
           GH_ACTOR: ${{ github.actor }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          GITHUB_TOKEN_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build with Maven
         run: |
