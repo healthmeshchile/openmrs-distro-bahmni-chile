@@ -14,6 +14,9 @@ jobs:
   build-publish-docker-helm:
     name: Build & Publish Docker Image & Helm Chart
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read     # resolver los omod de Chile desde GitHub Packages
     env:
       HELM_CHART_PATH: package/helm/openmrs
     steps:
@@ -33,6 +36,32 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+
+      # Los modulos de Chile viven en GitHub Packages, que sirve por repositorio y
+      # exige credenciales aunque no haya nada publico. Hay un <server> por cada
+      # <repository> del distro/pom.xml, con el mismo <id>.
+      #
+      # Se usa el GITHUB_TOKEN del propio workflow, que esta acotado a este
+      # repositorio: para que alcance a los paquetes de los otros seis hay que
+      # concederle acceso UNA vez por paquete, en la pagina del paquete ->
+      # "Manage Actions access" -> anadir openmrs-distro-bahmni-chile con Read.
+      # Si algun dia estorba, la alternativa es un PAT con read:packages en un
+      # secreto; se prefiere no tenerlo porque un PAT no caduca con el job.
+      - name: Credenciales de GitHub Packages
+        run: |
+          mkdir -p ~/.m2
+          {
+            echo '<settings><servers>'
+            for id in ghp-bahmni-core-chile ghp-appointments-chile ghp-oauth2login \
+                      ghp-eis-identity ghp-interconsulta ghp-provider-signature; do
+              echo "  <server><id>${id}</id><username>${GH_ACTOR}</username><password>${GH_TOKEN}</password></server>"
+            done
+            echo '</servers></settings>'
+          } > ~/.m2/settings.xml
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build with Maven
         run: |
           ./mvnw --no-transfer-progress -U clean install
@@ -55,7 +84,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           file: package/docker/openmrs/Dockerfile
           push: true
-          tags: bahmni/openmrs:${{ env.ARTIFACT_VERSION }},bahmni/openmrs:latest
+          tags: healthmeshgroup/openmrs-hm:${{ env.ARTIFACT_VERSION }},healthmeshgroup/openmrs-hm:latest
       - name: Update Version and Image Tag
         run: |
           yq --inplace '.image.tag = "${{ env.ARTIFACT_VERSION }}"' $HELM_CHART_PATH/values.yaml

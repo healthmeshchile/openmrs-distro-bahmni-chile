@@ -20,7 +20,10 @@
         <atomfeedModuleVersion>2.6.3</atomfeedModuleVersion>
         <bacteriologyVersion>1.3.0</bacteriologyVersion>
         <auditLogVersion>1.3.0</auditLogVersion>
-        <bahmniCoreVersion>1.2.0</bahmniCoreVersion>
+        <!-- FORK CHILE: version propia publicada en GitHub Packages (healthmeshchile).
+             Sustituye a la 1.2.0 de Bahmni; no conviven, es la misma coordenada con
+             otra version, asi que el glob del Dockerfile sigue recogiendo un solo omod. -->
+        <bahmniCoreVersion>1.2.0-chile-hm-1</bahmniCoreVersion>
         <bahmniIpdVersion>1.1.1</bahmniIpdVersion>
         <bedManagementVersion>6.0.0</bedManagementVersion>
         <calculationVersion>1.3.0</calculationVersion>
@@ -48,7 +51,9 @@
         <webServicesRestVersion>2.44.0</webServicesRestVersion>
         <reportingRestVersion>1.14.0</reportingRestVersion>
         <bahmniIEOmodVersion>1.4.0</bahmniIEOmodVersion>
-        <appointmentsVersion>2.0.2</appointmentsVersion>
+        <!-- FORK CHILE. Ojo con el salto 2.0.2 -> 2.2.0: el fork no sale del tag 2.0.2
+             sino del master de upstream, que ya declaraba 2.2.0-SNAPSHOT. -->
+        <appointmentsVersion>2.2.0-chile-hm-1</appointmentsVersion>
         <pacsQueryVersion>1.4.0</pacsQueryVersion>
         <fhir2ModuleVersion>2.1.0</fhir2ModuleVersion>
         <fhir2ExtensionModuleVersion>1.3.1</fhir2ExtensionModuleVersion>
@@ -60,6 +65,19 @@
         <terminologyServicesVersion>1.0.1</terminologyServicesVersion>
         <cdssVersion>1.0.0</cdssVersion>
         <reportingCompatibilityVersion>2.0.9</reportingCompatibilityVersion>
+
+        <!-- ===================== Modulos de Chile ==========================
+             oauth2login es un FORK (lleva sufijo -chile-hm-N). Antes se colaba en
+             la imagen por bind-mount desde el arbol de fuentes; ahora entra por
+             coordenada, como el resto.
+
+             Los otros tres son PROPIOS, sin upstream del que diferenciarse, asi
+             que van con version limpia.
+             ================================================================ -->
+        <oauth2loginVersion>1.5.0-chile-hm-1</oauth2loginVersion>
+        <eisIdentityVersion>0.1.0</eisIdentityVersion>
+        <interconsultaVersion>0.1.0</interconsultaVersion>
+        <providerSignatureVersion>0.1.0</providerSignatureVersion>
     </properties>
 
     <dependencies>
@@ -270,6 +288,35 @@
             <version>${appointmentsVersion}</version>
         </dependency>
 
+        <!-- ================= Modulos de Chile =================
+             Se resuelven desde GitHub Packages (ver <repositories> al final).
+             bahmnicore y appointments no aparecen aqui porque ya estaban en la
+             lista de Bahmni: de esos solo cambia la version, mas arriba.
+             ==================================================== -->
+        <dependency>
+            <groupId>org.openmrs.module</groupId>
+            <artifactId>oauth2login-omod</artifactId>
+            <version>${oauth2loginVersion}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openmrs.module</groupId>
+            <artifactId>eisidentity-omod</artifactId>
+            <version>${eisIdentityVersion}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openmrs.module</groupId>
+            <artifactId>interconsulta-omod</artifactId>
+            <version>${interconsultaVersion}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openmrs.module</groupId>
+            <artifactId>provider-signature-omod</artifactId>
+            <version>${providerSignatureVersion}</version>
+        </dependency>
+
          <dependency>
             <groupId>org.openmrs.module</groupId>
             <artifactId>operationtheater-omod</artifactId>
@@ -351,6 +398,59 @@
     </pluginRepositories>
 
     <repositories>
+        <!-- ============ GitHub Packages: los modulos de Chile ==================
+             GitHub Packages sirve por REPOSITORIO, no por organizacion: no existe
+             una URL que agrupe todos los paquetes de healthmeshchile, asi que hay
+             una entrada por repo de origen. Van PRIMERO para que Maven no gaste un
+             404 contra Sonatype y Bahmni antes de encontrarlas.
+
+             Los paquetes son privados (heredan la visibilidad del repo), asi que
+             hacen falta credenciales: el workflow escribe un ~/.m2/settings.xml con
+             estos mismos <id>. Y ademas cada paquete tiene que conceder acceso de
+             lectura a openmrs-distro-bahmni-chile ("Manage Actions access" en la
+             pagina del paquete); si no, el GITHUB_TOKEN de este repo no lo ve, que
+             esta acotado a su propio repositorio. Eso se hace UNA vez por paquete.
+
+             snapshots deshabilitado a proposito: en la imagen no debe entrar nunca
+             una version que pueda cambiar bajo el mismo numero.
+             ==================================================================== -->
+        <repository>
+            <id>ghp-bahmni-core-chile</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/bahmni-core-chile</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>ghp-appointments-chile</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/openmrs-module-appointments-chile</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>ghp-oauth2login</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/openmrs-module-oauth2login</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>ghp-eis-identity</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/openmrs-module-eis-identity</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>ghp-interconsulta</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/openmrs-module-interconsulta</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>ghp-provider-signature</id>
+            <url>https://maven.pkg.github.com/healthmeshchile/openmrs-module-provider-signature</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+
         <repository>
             <id>sonatype-nexus-snapshots</id>
             <name>Sonatype Nexus Snapshots</name>

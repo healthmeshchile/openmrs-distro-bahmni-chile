@@ -58,6 +58,21 @@ COPY distro/target/distro/communication*.omod  ${OPENMRS_APPLICATION_DATA_DIRECT
 COPY distro/target/distro/fhir-ts-services-int-*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
 COPY distro/target/distro/fhir-cdss-int-*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
 
+# Modulos de Chile.
+#
+# bahmnicore y appointments NO se listan aqui: son forks de modulos que Bahmni ya
+# incluye, entran por los COPY de arriba y lo unico que cambia es la version que
+# resuelve Maven. Al ser la misma coordenada no hay dos ficheros, asi que el
+# comodin sigue recogiendo exactamente uno y no queda el omod de stock que
+# reemplazan.
+#
+# Estos cuatro si son adicionales: oauth2login (fork, antes se montaba por
+# bind-mount) y los tres propios.
+COPY distro/target/distro/oauth2login*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
+COPY distro/target/distro/eisidentity*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
+COPY distro/target/distro/interconsulta*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
+COPY distro/target/distro/provider-signature*.omod  ${OPENMRS_APPLICATION_DATA_DIRECTORY}/modules
+
 # Copy Configuration Files
 COPY package/docker/openmrs/templates/bahmnicore.properties.template /etc/bahmni-emr/templates/
 COPY package/docker/openmrs/templates/openmrs-runtime.properties.template /etc/bahmni-emr/templates/
