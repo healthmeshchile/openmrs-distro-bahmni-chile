@@ -119,6 +119,15 @@ jobs:
           file: package/docker/openmrs/Dockerfile
           push: true
           tags: healthmeshgroup/openmrs-hm:${{ env.ARTIFACT_VERSION }},healthmeshgroup/openmrs-hm:latest
+          # Etiquetas OCI: la imagen se describe a si misma. Sin esto, saber de que
+          # commit sale una imagen publicada exige adivinar por fechas. `revision` es
+          # lo que permite sacar el merge-base contra el upstream y medir la divergencia.
+          labels: |
+            org.opencontainers.image.title=openmrs-hm
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.ARTIFACT_VERSION }}
+            cl.healthmesh.upstream.repo=Bahmni/openmrs-distro-bahmni
       - name: Update Version and Image Tag
         run: |
           yq --inplace '.image.tag = "${{ env.ARTIFACT_VERSION }}"' $HELM_CHART_PATH/values.yaml
